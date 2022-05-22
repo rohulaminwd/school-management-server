@@ -38,6 +38,7 @@ async function run(){
   try{
     await client.connect();
     const userCollection = client.db("manufacturer").collection("users");
+    const productCollection = client.db("manufacturer").collection("products");
 
     //  ======= middleware verify Admin ========
     const verifyAdmin = async (req, res, next) => {
@@ -53,8 +54,8 @@ async function run(){
 
     // =====get method====
     app.get('/user', verifyJWT, async (req, res) => {
-      const doctors = await userCollection.find().toArray();
-      res.send(doctors);
+      const users = await userCollection.find().toArray();
+      res.send(users);
     })
 
     app.get('/admin/:email', async (req, res) => {
@@ -62,6 +63,28 @@ async function run(){
       const user = await userCollection.findOne({email: email});
       const isAdmin = user.role === "admin"
       res.send({admin: isAdmin});
+    })
+
+    app.get('/product', verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await productCollection.find().toArray();
+      res.send(result);
+    });
+
+    // ===== Post method =======
+    app.post('/product', verifyJWT, verifyAdmin, async (req, res) => {
+      const product = req.body;
+      const result = await productCollection.insertOne(product);
+      res.send(result);
+    })
+
+    // ===== Delete method ======
+    app.delete('/product/:_id',  async (req, res) => {
+      const id = req.params._id;
+      console.log(id)
+      const filter = { _id: objectId(id)}
+      console.log(id, filter)
+      const result = await productCollection.deleteOne(filter);
+      res.send(result);
     })
 
     // ====== put method ======
