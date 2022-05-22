@@ -37,7 +37,7 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 async function run(){
   try{
     await client.connect();
-    const userCollection = client.db('manufacturer').collections('users')
+    const userCollection = client.db("manufacturer").collection("users");
 
     //  ======= middleware verify Admin ========
     const verifyAdmin = async (req, res, next) => {
@@ -50,6 +50,19 @@ async function run(){
         return res.status(403).send({message: 'Forbidden access'})
       }
     }
+
+    // =====get method====
+    app.get('/user', verifyJWT, async (req, res) => {
+      const doctors = await userCollection.find().toArray();
+      res.send(doctors);
+    })
+
+    app.get('/admin/:email', async (req, res) => {
+      const email = req.params.email;
+      const user = await userCollection.findOne({email: email});
+      const isAdmin = user.role === "admin"
+      res.send({admin: isAdmin});
+    })
 
     // ====== put method ======
     app.put('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
@@ -66,6 +79,7 @@ async function run(){
       const email = req.params.email;
       const user = req.body;
       const filter = {email: email};
+      console.log(user, email)
       const options = { upsert: true };
       const updateDoc = {
         $set: user,
