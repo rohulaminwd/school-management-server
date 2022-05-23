@@ -41,6 +41,7 @@ async function run(){
     const userCollection = client.db("manufacturer").collection("users");
     const productCollection = client.db("manufacturer").collection("products");
     const orderCollection = client.db("manufacturer").collection("orders");
+    const reviewCollection = client.db("manufacturer").collection("reviews");
 
     //  ======= middleware verify Admin ========
     const verifyAdmin = async (req, res, next) => {
@@ -77,6 +78,18 @@ async function run(){
       res.send(result);
     });
 
+    app.get('/myOrder', async (req, res) => {
+      const email = req.query.email
+      const query = { email: email };
+      const result = await orderCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get('/review', async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
+
     app.get('/product/:id', async (req, res) => {
       const id = req.params.id;
       const query = {_id: objectId(id)}
@@ -88,6 +101,11 @@ async function run(){
     app.post('/product', verifyJWT, verifyAdmin, async (req, res) => {
       const product = req.body;
       const result = await productCollection.insertOne(product);
+      res.send(result);
+    })
+    app.post('/review', verifyJWT, async (req, res) => {
+      const review = req.body;
+      const result = await reviewCollection.insertOne(review);
       res.send(result);
     })
 
@@ -106,6 +124,14 @@ async function run(){
       res.send(result);
     })
 
+    app.delete('/myOrder/:id',  async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: objectId(id)}
+      console.log(query)
+      const result = await orderCollection.deleteOne(query);
+      res.send(result);
+    })
+
     // ====== put method ======
     app.put('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
       const email = req.params.email;
@@ -121,7 +147,6 @@ async function run(){
       const email = req.params.email;
       const user = req.body;
       const filter = {email: email};
-      console.log(user, email)
       const options = { upsert: true };
       const updateDoc = {
         $set: user,
