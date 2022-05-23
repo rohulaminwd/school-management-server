@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors');
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const objectId = require('mongodb').ObjectId;
 const jwt = require('jsonwebtoken');
 require('dotenv').config()
 const app = express();
@@ -39,6 +40,7 @@ async function run(){
     await client.connect();
     const userCollection = client.db("manufacturer").collection("users");
     const productCollection = client.db("manufacturer").collection("products");
+    const orderCollection = client.db("manufacturer").collection("orders");
 
     //  ======= middleware verify Admin ========
     const verifyAdmin = async (req, res, next) => {
@@ -53,7 +55,7 @@ async function run(){
     }
 
     // =====get method====
-    app.get('/user', verifyJWT, async (req, res) => {
+    app.get('/user', verifyJWT, verifyAdmin, async (req, res) => {
       const users = await userCollection.find().toArray();
       res.send(users);
     })
@@ -65,10 +67,22 @@ async function run(){
       res.send({admin: isAdmin});
     })
 
-    app.get('/product', verifyJWT, verifyAdmin, async (req, res) => {
+    app.get('/product', async (req, res) => {
       const result = await productCollection.find().toArray();
       res.send(result);
     });
+
+    app.get('/order', async (req, res) => {
+      const result = await orderCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get('/product/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: objectId(id)}
+      const product = await productCollection.findOne(query);
+      res.send(product);
+    })
 
     // ===== Post method =======
     app.post('/product', verifyJWT, verifyAdmin, async (req, res) => {
@@ -77,13 +91,18 @@ async function run(){
       res.send(result);
     })
 
+    app.post('/order', async (req, res) => {
+      const product = req.body;
+      const result = await orderCollection.insertOne(product);
+      res.send(result);
+    })
+
     // ===== Delete method ======
-    app.delete('/product/:_id',  async (req, res) => {
-      const id = req.params._id;
-      console.log(id)
-      const filter = { _id: objectId(id)}
-      console.log(id, filter)
-      const result = await productCollection.deleteOne(filter);
+    app.delete('/product/:id',  async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: objectId(id)}
+      console.log(query)
+      const result = await productCollection.deleteOne(query);
       res.send(result);
     })
 
