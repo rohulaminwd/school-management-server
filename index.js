@@ -1,9 +1,10 @@
 const express = require('express')
 const cors = require('cors');
+require('dotenv').config()
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const objectId = require('mongodb').ObjectId;
 const jwt = require('jsonwebtoken');
-require('dotenv').config()
+const stripe = require('stripe')(process.env.STRIP_SECRET_KEY);
 const app = express();
 const port = process.env.PORT || 5000
 
@@ -120,6 +121,21 @@ async function run(){
       const product = req.body;
       const result = await orderCollection.insertOne(product);
       res.send(result);
+    })
+
+    // payment getway method api
+    app.post('/create-payment-intent', async (req, res) => {
+      const service = req.body;
+      const price = service.price;
+      const amount = price*100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        automatic_payment_methods: ['card']
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     })
 
     // ===== Delete method ======
