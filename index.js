@@ -4,6 +4,7 @@ require('dotenv').config()
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const objectId = require('mongodb').ObjectId;
 const jwt = require('jsonwebtoken');
+const { ObjectID } = require('bson');
 const stripe = require('stripe')(process.env.STRIP_SECRET_KEY);
 const app = express();
 const port = process.env.PORT || 5000
@@ -43,6 +44,7 @@ async function run(){
     const productCollection = client.db("manufacturer").collection("products");
     const orderCollection = client.db("manufacturer").collection("orders");
     const reviewCollection = client.db("manufacturer").collection("reviews");
+    const paymentCollection = client.db("manufacturer").collection("payment");
 
     //  ======= middleware verify Admin ========
     const verifyAdmin = async (req, res, next) => {
@@ -71,7 +73,7 @@ async function run(){
 
     app.get('/product', async (req, res) => {
       const result = await productCollection.find().toArray();
-      res.send(result);
+      res.send(result.reverse());
     });
 
     app.get('/order', async (req, res) => {
@@ -88,7 +90,7 @@ async function run(){
 
     app.get('/review', async (req, res) => {
       const result = await reviewCollection.find().toArray();
-      res.send(result);
+      res.send(result.reverse());
     });
 
     app.get('/product/:id', async (req, res) => {
@@ -131,11 +133,29 @@ async function run(){
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: "usd",
-        automatic_payment_methods: ['card']
+        payment_method_types:['card']
       });
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
+    })
+
+    // ===== patch method ======
+
+    app.patch('/order/:id', async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+      const filter = {_id: ObjectID(id)};
+      const updateDoc = {
+        $set: {
+          paid: true,
+          status: 'pending',
+          transactionId: payment.transactionId,
+        }
+      }
+      const result = await paymentCollection.insertOne(payment);
+      const updateOrder = await orderCollection.updateOne(filter, updateDoc);
+      res.send(updateDoc, result, updateOrder); 
     })
 
     // ===== Delete method ======
@@ -163,6 +183,16 @@ async function run(){
           $set: {role: "admin"}
         };
         const result = await userCollection.updateOne(filter, updateDoc);
+        res.send(result)
+    })
+
+    app.put('/order/:id', verifyJWT, verifyAdmin, async (req, res) => {
+        const id = req.params.id;
+        const filter = {_id: ObjectID(id)}
+        const updateDoc = {
+          $set: {status: 'shipt'}
+        };
+        const result = await orderCollection.updateOne(filter, updateDoc);
         res.send(result)
     })
 
