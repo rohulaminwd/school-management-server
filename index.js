@@ -97,6 +97,13 @@ async function run(){
       res.send(product);
     })
 
+    app.get('/payProduct/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: objectId(id)}
+      const product = await orderCollection.findOne(query);
+      res.send(product);
+    })
+
     // ===== Post method =======
     app.post('/product', verifyJWT, verifyAdmin, async (req, res) => {
       const product = req.body;
